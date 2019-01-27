@@ -7,10 +7,10 @@ out:
 	if [ -e "$(BUILD_DIR)/" ] ; \
 	then \
 			rm -rf ./build/* ; \
-			cd ./build &&	cmake .. && make ; \
+			cd build &&	cmake .. && make ; \
 	else \
 			mkdir ./build ; \
-			cd ./build &&	cmake .. && make ; \
+			cd build &&	cmake .. && make ; \
 	fi ;
 
 clean:
