@@ -17,5 +17,5 @@ clean:
 	@rm -rf ./build/* ;	
 
 tags:
-	cd ./build &&	rdm &
+	# cd ./build &&	rdm &
 	cd ./build &&	rc -J .
