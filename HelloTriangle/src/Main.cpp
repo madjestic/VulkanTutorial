@@ -7,7 +7,6 @@
 #include <cstring>
 #include <cstdlib>
 #include <optional>
-#include <experimental/optional>
 #include <set>
 
 const int WIDTH = 800;
@@ -46,20 +45,15 @@ void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT
 	}
 }
 
-void processInput(GLFWwindow *window)
-{
-	if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-		glfwSetWindowShouldClose(window, true);
-}
-
 struct QueueFamilyIndices {
-	std::experimental::optional<uint32_t> graphicsFamily;
-	std::experimental::optional<uint32_t> presentFamily;
+	std::optional<uint32_t> graphicsFamily;
+	std::optional<uint32_t> presentFamily;
 
 	bool isComplete() {
-		return graphicsFamily.value() && presentFamily.value();
+		return graphicsFamily.has_value() && presentFamily.has_value();
 	}
 };
+
 
 // 888    8888888888888888     888      .d88888b.888888888888888888b. 8888888       d8888888b    888 .d8888b. 888     8888888888       d88888888888b. 8888888b. 888     8888888 .d8888b.        d8888888888888888888888 .d88888b. 888b    888 
 // 888    888888       888     888     d88P" "Y88b   888    888   Y88b  888        d888888888b   888d88P  Y88b888     888             d88888888   Y88b888   Y88b888       888  d88P  Y88b      d88888    888      888  d88P" "Y88b8888b   888 
@@ -80,25 +74,44 @@ public:
 	}
 
 private:
-	GLFWwindow* window;
+	GLFWwindow*              window;
+	bool                     framebufferResized = false;
 
-	VkInstance instance;
+	VkInstance               instance;
 	VkDebugUtilsMessengerEXT debugMessenger;
   
-	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
-	VkDevice device;
-	VkQueue graphicsQueue;
-	VkQueue presentQueue;
+	VkPhysicalDevice         physicalDevice = VK_NULL_HANDLE;
+	VkDevice                 device;
+	VkQueue					 graphicsQueue;
+	VkQueue					 presentQueue;
 
-	VkSurfaceKHR surface;
+ 	VkSurfaceKHR             surface;
 
-	void initWindow() {
-		glfwInit();
+    //   GGGG  LL      FFFFFFF WW      WW 
+    //  GG  GG LL      FF      WW      WW 
+    // GG      LL      FFFF    WW   W  WW 
+    // GG   GG LL      FF       WW WWW WW 
+    //  GGGGGG LLLLLLL FF        WW   WW  
+	
+  	void initWindow() {
+  		glfwInit();
 
 		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-		glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-
+		
 		window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
+		glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
+		glfwSetKeyCallback(window, keyCallback);
+	}
+
+	static void framebufferResizeCallback(GLFWwindow* window, int width, int height) {
+		auto app = reinterpret_cast<HelloTriangleApplication*>(glfwGetWindowUserPointer(window));
+		app -> framebufferResized = true;
+	}
+
+	static void keyCallback(GLFWwindow* window, int key, int scanCode, int action, int modifiers) {
+		if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
+			glfwSetWindowShouldClose(window, GLFW_TRUE);
+		}
 	}
 
 	void initVulkan() {
@@ -111,7 +124,7 @@ private:
 
 	void mainLoop() {
 		while (!glfwWindowShouldClose(window)) {
-			processInput(window);
+			// processInput(window);
 			glfwPollEvents();
 		}
 	}
@@ -187,7 +200,7 @@ private:
 		QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
 
 		std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
-		std::set<uint32_t> uniqueQueueFamilies = {indices.graphicsFamily.value(), indices.presentFamily.value()};
+		std::set<uint32_t> uniqueQueueFamilies = {indices.graphicsFamily.has_value(), indices.presentFamily.has_value()};
 
 		float queuePriority = 1.0f;
 
@@ -222,7 +235,7 @@ private:
 			throw std::runtime_error("failed to create logical device!");
 		}
 
-		vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
+		vkGetDeviceQueue(device, indices.graphicsFamily.has_value(), 0, &graphicsQueue);
 	};
 
 	void pickPhysicalDevice(){
