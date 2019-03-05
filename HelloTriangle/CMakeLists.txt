@@ -9,9 +9,4 @@ add_executable (HelloTriangle ${SOURCES} ${HEADERS})
 target_link_libraries(HelloTriangle glfw vulkan)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-set_target_properties(HelloTriangle PROPERTIES
-  CXX_STANDARD 17
-  CXX_STANDARD_REQUIRED YES
-  CXX_EXTENSIONS NO
-  )
-
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1z")
