@@ -14,7 +14,8 @@ out:
 	fi ;
 
 clean:
-	@rm -rf ./build/* ;	
+	@rm -rf ./build/* ;
+	@rm -rf ./*.log ;
 
 tags:
 	# cd ./build &&	rdm &

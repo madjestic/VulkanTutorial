@@ -18,8 +18,9 @@
 // CC    C OO   OO NN  NNN      SS   TTT   AAAAAAA NN  NNN   TTT        SS 
 //  CCCCC   OOOO0  NN   NN  SSSSS    TTT   AA   AA NN   NN   TTT    SSSSS  
 
-const int WIDTH  = 800;
-const int HEIGHT = 600;
+const int WIDTH				   = 800;
+const int HEIGHT			   = 600;
+const int MAX_FRAMES_IN_FLIGHT = 2;
 
 const std::vector<const char*> validationLayers = {
 	"VK_LAYER_LUNARG_standard_validation"
@@ -97,15 +98,15 @@ struct SwapChainSupportDetails {
 	std::vector<VkPresentModeKHR>   presentModes;
 };
 
+// 888    8888888888888888     888      .d88888b.888888888888888888b. 8888888       d8888888b    888 .d8888b. 888     8888888888 
+// 888    888888       888     888     d88P" "Y88b   888    888   Y88b  888        d888888888b   888d88P  Y88b888     888        
+// 888    888888       888     888     888     888   888    888    888  888       d88P88888888b  888888    888888     888        
+// 88888888888888888   888     888     888     888   888    888   d88P  888      d88P 888888Y88b 888888       888     8888888    
+// 888    888888       888     888     888     888   888    8888888P"   888     d88P  888888 Y88b888888  88888888     888        
+// 888    888888       888     888     888     888   888    888 T88b    888    d88P   888888  Y88888888    888888     888        
+// 888    888888       888     888     Y88b. .d88P   888    888  T88b   888   d8888888888888   Y8888Y88b  d88P888     888        
+// 888    88888888888888888888888888888 "Y88888P"    888    888   T88b8888888d88P     888888    Y888 "Y8888P88888888888888888888 
 
-// 888    8888888888888888     888      .d88888b.888888888888888888b. 8888888       d8888888b    888 .d8888b. 888     8888888888       d88888888888b. 8888888b. 888     8888888 .d8888b.        d8888888888888888888888 .d88888b. 888b    888 
-// 888    888888       888     888     d88P" "Y88b   888    888   Y88b  888        d888888888b   888d88P  Y88b888     888             d88888888   Y88b888   Y88b888       888  d88P  Y88b      d88888    888      888  d88P" "Y88b8888b   888 
-// 888    888888       888     888     888     888   888    888    888  888       d88P88888888b  888888    888888     888            d88P888888    888888    888888       888  888    888     d88P888    888      888  888     88888888b  888 
-// 88888888888888888   888     888     888     888   888    888   d88P  888      d88P 888888Y88b 888888       888     8888888       d88P 888888   d88P888   d88P888       888  888           d88P 888    888      888  888     888888Y88b 888 
-// 888    888888       888     888     888     888   888    8888888P"   888     d88P  888888 Y88b888888  88888888     888          d88P  8888888888P" 8888888P" 888       888  888          d88P  888    888      888  888     888888 Y88b888 
-// 888    888888       888     888     888     888   888    888 T88b    888    d88P   888888  Y88888888    888888     888         d88P   888888       888       888       888  888    888  d88P   888    888      888  888     888888  Y88888 
-// 888    888888       888     888     Y88b. .d88P   888    888  T88b   888   d8888888888888   Y8888Y88b  d88P888     888        d8888888888888       888       888       888  Y88b  d88P d8888888888    888      888  Y88b. .d88P888   Y8888 
-// 888    88888888888888888888888888888 "Y88888P"    888    888   T88b8888888d88P     888888    Y888 "Y8888P88888888888888888888d88P     888888       888       888888888888888 "Y8888P" d88P     888    888    8888888 "Y88888P" 888    Y888 
 
 class HelloTriangleApplication {
 public:
@@ -148,6 +149,10 @@ private:
 	VkPipeline                   graphicsPipeline;
 	VkCommandPool                commandPool;
 	std::vector<VkCommandBuffer> commandBuffers;
+
+	VkSemaphore                  imageAvailableSemaphore;
+	VkSemaphore                  renderFinishedSemaphore;
+	size_t                       currentFrame = 0;
 
     //   GGGG  LL      FFFFFFF WW      WW IIIII NN   NN IIIII TTTTTTT WW      WW IIIII NN   NN DDDDD    OOOOO  WW      WW 
     //  GG  GG LL      FF      WW      WW  III  NNN  NN  III    TTT   WW      WW  III  NNN  NN DD  DD  OO   OO WW      WW 
@@ -197,19 +202,70 @@ private:
 		createFramebuffers();
 		createCommandPool();
 		createCommandBuffers();
+		createSemaphores();
 	}
 
-	// MM	 MM	  AAA	IIIII NN   NN LL	   OOOOO   OOOOO  PPPPPP  
-	// MMM	MMM	 AAAAA	 III  NNN  NN LL	  OO   OO OO   OO PP   PP 
-	// MM MM MM AA	 AA	 III  NN N NN LL	  OO   OO OO   OO PPPPPP  
-	// MM	 MM AAAAAAA	 III  NN  NNN LL	  OO   OO OO   OO PP	  
-	// MM	 MM AA	 AA IIIII NN   NN LLLLLLL  OOOO0   OOOO0  PP	  
+    // MM    MM   AAA   IIIII NN   NN LL       OOOOO   OOOOO  PPPPPP  
+    // MMM  MMM  AAAAA   III  NNN  NN LL      OO   OO OO   OO PP   PP 
+    // MM MM MM AA   AA  III  NN N NN LL      OO   OO OO   OO PPPPPP  
+    // MM    MM AAAAAAA  III  NN  NNN LL      OO   OO OO   OO PP      
+    // MM    MM AA   AA IIIII NN   NN LLLLLLL  OOOO0   OOOO0  PP      
+
 
 	void mainLoop() {
 		while (!glfwWindowShouldClose(window)) {
 			glfwPollEvents();
+			drawFrames();
 		}
+
+		vkDeviceWaitIdle(device);
 	}
+
+    // DDDDD   RRRRRR    AAA   WW      WW FFFFFFF RRRRRR    AAA   MM    MM EEEEEEE  SSSSS  
+    // DD  DD  RR   RR  AAAAA  WW      WW FF      RR   RR  AAAAA  MMM  MMM EE      SS      
+    // DD   DD RRRRRR  AA   AA WW   W  WW FFFF    RRRRRR  AA   AA MM MM MM EEEEE    SSSSS  
+    // DD   DD RR  RR  AAAAAAA  WW WWW WW FF      RR  RR  AAAAAAA MM    MM EE           SS 
+    // DDDDDD  RR   RR AA   AA   WW   WW  FF      RR   RR AA   AA MM    MM EEEEEEE  SSSSS
+
+	void drawFrames() {
+		uint32_t imageIndex;
+		vkAcquireNextImageKHR(device, swapChain, std::numeric_limits<uint64_t>::max(), imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
+
+		VkSubmitInfo submitInfo = {};
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+		VkSemaphore waitSemaphores[]      = {imageAvailableSemaphore};
+		VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+		submitInfo.waitSemaphoreCount     = 1;
+		submitInfo.pWaitSemaphores        = waitSemaphores;
+		submitInfo.pWaitDstStageMask      = waitStages;
+		submitInfo.commandBufferCount     = 1;
+		submitInfo.pCommandBuffers        = &commandBuffers[imageIndex];
+
+		VkSemaphore signalSimaphores[]    = { renderFinishedSemaphore };
+		submitInfo.signalSemaphoreCount   = 1;
+		submitInfo.pSignalSemaphores      = signalSimaphores;
+
+		if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE) != VK_SUCCESS) {
+			throw std::runtime_error("failed to submit draw command buffer!");
+		}
+
+		VkPresentInfoKHR presentInfo = {};
+		presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+		presentInfo.waitSemaphoreCount = 1;
+		presentInfo.pWaitSemaphores = signalSimaphores;
+
+		VkSwapchainKHR swapChains[] = {swapChain};
+		presentInfo.swapchainCount  = 1;
+		presentInfo.pSwapchains     = swapChains;
+		presentInfo.pImageIndices   = &imageIndex;
+		presentInfo.pResults        = nullptr;
+
+		vkQueuePresentKHR(presentQueue, &presentInfo);
+
+		currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+	}
+	
 
     //  CCCCC  LL      EEEEEEE   AAA   NN   NN UU   UU PPPPPP  
     // CC    C LL      EE       AAAAA  NNN  NN UU   UU PP   PP 
@@ -218,6 +274,9 @@ private:
     //  CCCCC  LLLLLLL EEEEEEE AA   AA NN   NN  UUUUU  PP      
 
 	void cleanup() {
+		vkDestroySemaphore(device, renderFinishedSemaphore, nullptr);
+		vkDestroySemaphore(device, imageAvailableSemaphore, nullptr);
+		
 		vkDestroyCommandPool(device, commandPool, nullptr);
 		
 		for (auto framebuffer : swapChainFrameBuffers) {
@@ -763,12 +822,22 @@ private:
 		subpass.colorAttachmentCount = 1;
 		subpass.pColorAttachments    = &colorAttachmentRef;
 
+		VkSubpassDependency dependency = {};
+		dependency.srcSubpass  	 = VK_SUBPASS_EXTERNAL;
+		dependency.dstSubpass  	 = 0;
+		dependency.srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		dependency.srcAccessMask = 0;
+		dependency.dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
 		VkRenderPassCreateInfo renderPassInfo = {};
 		renderPassInfo.sType           = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 		renderPassInfo.attachmentCount = 1;
 		renderPassInfo.pAttachments    = &colorAttachement;
 		renderPassInfo.subpassCount    = 1;
 		renderPassInfo.pSubpasses      = &subpass;
+		renderPassInfo.dependencyCount = 1;
+		renderPassInfo.pDependencies   = &dependency;
 
 		if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS) {
 			throw std::runtime_error("failed to create render pass!");
@@ -876,7 +945,22 @@ private:
 			}
 		}
 	}
+
+    //  SSSSS  EEEEEEE MM    MM   AAA   PPPPPP  HH   HH  OOOOO  RRRRRR  EEEEEEE  SSSSS  
+    // SS      EE      MMM  MMM  AAAAA  PP   PP HH   HH OO   OO RR   RR EE      SS      
+    //  SSSSS  EEEEE   MM MM MM AA   AA PPPPPP  HHHHHHH OO   OO RRRRRR  EEEEE    SSSSS  
+    //      SS EE      MM    MM AAAAAAA PP      HH   HH OO   OO RR  RR  EE           SS 
+    //  SSSSS  EEEEEEE MM    MM AA   AA PP      HH   HH  OOOO0  RR   RR EEEEEEE  SSSSS  
 	
+	void createSemaphores(){
+		VkSemaphoreCreateInfo semaphoreInfo = {};
+		semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+		if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphore) != VK_SUCCESS ||
+			vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderFinishedSemaphore) != VK_SUCCESS ) {
+			throw std::runtime_error("failed to create semaphores!");
+		}
+	}
 
 	// MM    MM IIIII  SSSSS   CCCCC
 	// MMM  MMM  III  SS      CC    C
@@ -992,6 +1076,9 @@ private:
 int main() {
 	freopen( "output.log", "w", stdout);
 	std::cout << "Output message:" << std::endl;
+
+	freopen( "error.log", "w", stderr);
+	std::cout << "Error message:" << std::endl;
 	
 	HelloTriangleApplication app;
 
